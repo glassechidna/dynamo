@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/TylerBrock/colorjson"
 	"github.com/aws/aws-sdk-go/aws"
@@ -9,10 +10,15 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/mattn/go-isatty"
+	"github.com/spf13/pflag"
 	"os"
 	"regexp"
 	"strings"
 )
+
+var maxCount int
+var jsonLines bool
 
 func main() {
 	/*
@@ -24,6 +30,11 @@ func main() {
 		4 => app, table, pkey, skey => implies equality if no operator in skey
 	*/
 
+	pflag.IntVarP(&maxCount, "number", "n", 10, "maximum number of items to output. 0 for no limit")
+	pflag.BoolVarP(&jsonLines, "jsonlines", "l", false, "emit output as an item per line (not in an array)")
+	pflag.Parse()
+	args := pflag.Args()
+
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
@@ -31,37 +42,65 @@ func main() {
 
 	jsonItems := []interface{}{}
 
-	if len(os.Args) == 2 { // only table name passed in
-		err := api.ScanPages(&dynamodb.ScanInput{TableName: aws.String(os.Args[1])}, func(page *dynamodb.ScanOutput, lastPage bool) bool {
-			appendItems(page.Items, &jsonItems)
-			return true
+	if len(args) == 1 { // only table name passed in
+		input := &dynamodb.ScanInput{
+			TableName: aws.String(args[0]),
+			Limit:     aws.Int64(int64(maxCount)),
+		}
+		err := api.ScanPages(input, func(page *dynamodb.ScanOutput, lastPage bool) bool {
+			return appendItems(page.Items, &jsonItems) || lastPage
 		})
 		if err != nil {
 			spew.Dump(err)
 		}
 	} else {
-		input, _ := queryForArgs(api, os.Args[1:])
+		input, _ := queryForArgs(api, args)
+		input.Limit = aws.Int64(int64(maxCount))
 
 		err := api.QueryPages(input, func(page *dynamodb.QueryOutput, lastPage bool) bool {
-			appendItems(page.Items, &jsonItems)
-			return true
+			return appendItems(page.Items, &jsonItems) || lastPage
 		})
 		if err != nil {
 			spew.Dump(err)
 		}
 	}
 
-	f := colorjson.NewFormatter()
-	f.Indent = 2
-	bytes, _ := f.Marshal(jsonItems)
-	fmt.Println(string(bytes))
+	emit(jsonItems)
 }
 
-func appendItems(items []map[string]*dynamodb.AttributeValue, jsonItems *[]interface{}) {
+func emit(jsonItems []interface{}) {
+	var marshaller = json.Marshal
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		f := colorjson.NewFormatter()
+		if !jsonLines {
+			f.Indent = 2
+		}
+		marshaller = f.Marshal
+	}
+
+	if jsonLines {
+		for _, item := range jsonItems {
+			bytes, _ := marshaller(item)
+			fmt.Println(string(bytes))
+		}
+	} else {
+		bytes, _ := marshaller(jsonItems)
+		fmt.Println(string(bytes))
+	}
+}
+
+func appendItems(items []map[string]*dynamodb.AttributeValue, jsonItems *[]interface{}) bool {
+	take := len(items)
+	if take > maxCount - len(*jsonItems) {
+		take = maxCount - len(*jsonItems)
+	}
+
 	for _, item := range items {
 		jsonItem := itemToJsonable(item)
 		*jsonItems = append(*jsonItems, jsonItem)
 	}
+
+	return len(*jsonItems) < maxCount
 }
 
 func queryForArgs(api dynamodbiface.DynamoDBAPI, args []string) (*dynamodb.QueryInput, error) {
