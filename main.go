@@ -11,14 +11,21 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/mattn/go-isatty"
+	"github.com/sean-/pager"
 	"github.com/spf13/pflag"
+	"io"
 	"os"
 	"regexp"
 	"strings"
 )
 
 var maxCount int
-var jsonLines bool
+
+type Dynamo struct {
+	api     dynamodbiface.DynamoDBAPI
+	w       io.WriteCloser
+	emitted int
+}
 
 func main() {
 	/*
@@ -31,7 +38,6 @@ func main() {
 	*/
 
 	pflag.IntVarP(&maxCount, "number", "n", 10, "maximum number of items to output. 0 for no limit")
-	pflag.BoolVarP(&jsonLines, "jsonlines", "l", false, "emit output as an item per line (not in an array)")
 	pflag.Parse()
 	args := pflag.Args()
 
@@ -40,67 +46,78 @@ func main() {
 	}))
 	api := dynamodb.New(sess)
 
-	jsonItems := []interface{}{}
+	var w io.WriteCloser = os.Stdout
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		p, _ := pager.New()
+		defer p.Wait()
+		w = p
+	}
 
+	d := &Dynamo{
+		api: api,
+		w:   w,
+	}
+	d.Run(args)
+}
+
+func (d *Dynamo) Run(args []string) {
 	if len(args) == 1 { // only table name passed in
 		input := &dynamodb.ScanInput{
 			TableName: aws.String(args[0]),
-			Limit:     aws.Int64(int64(maxCount)),
+			Limit:     aws.Int64(100),
 		}
-		err := api.ScanPages(input, func(page *dynamodb.ScanOutput, lastPage bool) bool {
-			return appendItems(page.Items, &jsonItems) || lastPage
+		err := d.api.ScanPages(input, func(page *dynamodb.ScanOutput, lastPage bool) bool {
+			return d.write(convert(page.Items)) || lastPage
 		})
 		if err != nil {
 			spew.Dump(err)
 		}
 	} else {
-		input, _ := queryForArgs(api, args)
-		input.Limit = aws.Int64(int64(maxCount))
+		input, _ := queryForArgs(d.api, args)
 
-		err := api.QueryPages(input, func(page *dynamodb.QueryOutput, lastPage bool) bool {
-			return appendItems(page.Items, &jsonItems) || lastPage
+		err := d.api.QueryPages(input, func(page *dynamodb.QueryOutput, lastPage bool) bool {
+			return d.write(convert(page.Items)) || lastPage
 		})
 		if err != nil {
 			spew.Dump(err)
 		}
 	}
-
-	emit(jsonItems)
 }
 
-func emit(jsonItems []interface{}) {
+func convert(items []map[string]*dynamodb.AttributeValue) []interface{} {
+	ret := []interface{}{}
+	err := dynamodbattribute.UnmarshalListOfMaps(items, &ret)
+	if err != nil {
+		panic(err)
+	}
+	return ret
+}
+
+func (d *Dynamo) write(jsonItems []interface{}) bool {
 	var marshaller = json.Marshal
 	if isatty.IsTerminal(os.Stdout.Fd()) {
 		f := colorjson.NewFormatter()
-		if !jsonLines {
-			f.Indent = 2
-		}
+		f.Indent = 2
 		marshaller = f.Marshal
 	}
 
-	if jsonLines {
-		for _, item := range jsonItems {
-			bytes, _ := marshaller(item)
-			fmt.Println(string(bytes))
+	for _, item := range jsonItems {
+		bytes, _ := marshaller(item)
+		_, err := fmt.Fprintln(d.w, string(bytes))
+		if err != nil {
+			if err == io.ErrClosedPipe {
+				return false
+			}
+			spew.Fdump(os.Stderr, err)
+			panic(err)
 		}
-	} else {
-		bytes, _ := marshaller(jsonItems)
-		fmt.Println(string(bytes))
-	}
-}
-
-func appendItems(items []map[string]*dynamodb.AttributeValue, jsonItems *[]interface{}) bool {
-	take := len(items)
-	if take > maxCount - len(*jsonItems) {
-		take = maxCount - len(*jsonItems)
+		d.emitted++
+		if maxCount > 0 && d.emitted >= maxCount {
+			return false
+		}
 	}
 
-	for _, item := range items {
-		jsonItem := itemToJsonable(item)
-		*jsonItems = append(*jsonItems, jsonItem)
-	}
-
-	return len(*jsonItems) < maxCount
+	return true
 }
 
 func queryForArgs(api dynamodbiface.DynamoDBAPI, args []string) (*dynamodb.QueryInput, error) {
@@ -198,13 +215,4 @@ func parseSortExpr(input string) *parsedExpr {
 	}
 
 	return nil
-}
-
-func itemToJsonable(item map[string]*dynamodb.AttributeValue) map[string]interface{} {
-	ret := map[string]interface{}{}
-	err := dynamodbattribute.UnmarshalMap(item, &ret)
-	if err != nil {
-		panic(err)
-	}
-	return ret
 }
