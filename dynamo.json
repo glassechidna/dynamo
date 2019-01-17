@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "architecture": {
+        "32bit": {
+            "url": "https://github.com/glassechidna/dynamo/releases/download/0.2.0/dynamo_0.2.0_Windows_i386.tar.gz",
+            "bin": [
+                "dynamo.exe"
+            ],
+            "hash": "3662a3e9ea5a86476effa0c5408f5e78d4cd4020ffc8c7fc30c9dde9a00aaf74"
+        },
+        "64bit": {
+            "url": "https://github.com/glassechidna/dynamo/releases/download/0.2.0/dynamo_0.2.0_Windows_x86_64.tar.gz",
+            "bin": [
+                "dynamo.exe"
+            ],
+            "hash": "93dab38c00a28ec3ac6909e8bf7b42e2b9b80fddfeaa92bff188d80c53bed7de"
+        }
+    },
+    "homepage": "https://github.com/glassechidna/dynamo",
+    "license": "MIT",
+    "description": "dynamo is a dead-simple CLI for AWS DynamoDB"
+}
