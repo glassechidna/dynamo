@@ -45,7 +45,7 @@ brew:
 scoop:
   bucket:
     owner: glassechidna
-    name: dynamo
+    name: scoop-bucket
   commit_author:
     name: Aidan Steele
     email: aidan.steele@glassechidna.com.au
