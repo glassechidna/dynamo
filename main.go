@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
-	"github.com/sean-/pager"
 	"github.com/spf13/pflag"
 	"io"
 	"os"
@@ -23,7 +23,7 @@ var maxCount int
 
 type Dynamo struct {
 	api     dynamodbiface.DynamoDBAPI
-	w       io.WriteCloser
+	w       io.Writer
 	emitted int
 }
 
@@ -46,11 +46,9 @@ func main() {
 	}))
 	api := dynamodb.New(sess)
 
-	var w io.WriteCloser = os.Stdout
+	var w io.Writer = os.Stdout
 	if isatty.IsTerminal(os.Stdout.Fd()) {
-		p, _ := pager.New()
-		defer p.Wait()
-		w = p
+		w = colorable.NewColorable(os.Stdout)
 	}
 
 	d := &Dynamo{
