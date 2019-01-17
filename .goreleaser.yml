@@ -38,3 +38,13 @@ brew:
     email: aidan.steele@glassechidna.com.au
   homepage: https://github.com/glassechidna/dynamo
   description: dynamo is a dead-simple CLI for AWS DynamoDB
+scoop:
+  bucket:
+    owner: glassechidna
+    name: dynamo
+  commit_author:
+    name: Aidan Steele
+    email: aidan.steele@glassechidna.com.au
+  homepage: https://github.com/glassechidna/dynamo
+  description: dynamo is a dead-simple CLI for AWS DynamoDB
+  license: MIT
