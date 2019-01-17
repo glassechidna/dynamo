@@ -2,6 +2,8 @@
 
 `dynamo` is a dead-simple CLI for AWS DynamoDB.
 
+![Demo video of usage](https://user-images.githubusercontent.com/369053/51354899-4bb01f80-1b09-11e9-954d-957194d0b004.gif)
+
 ## Installation
 
 * Mac: `brew install glassechidna/taps/dynamo`
