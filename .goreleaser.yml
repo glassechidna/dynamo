@@ -5,6 +5,10 @@ before:
 builds:
 - env:
   - CGO_ENABLED=0
+  goos:
+    - darwin
+    - linux
+    - windows
 archive:
   replacements:
     darwin: Darwin
