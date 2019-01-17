@@ -122,33 +122,51 @@ func queryForArgs(api dynamodbiface.DynamoDBAPI, args []string) (*dynamodb.Query
 	table := args[0]
 	tableDescription, _ := tableDescription(api, table)
 
+	attrType := func(name string) string {
+		for _, def := range tableDescription.AttributeDefinitions {
+			if name == *def.AttributeName {
+				return *def.AttributeType
+			}
+		}
+		panic(fmt.Sprintf("unknown key: %s", name))
+	}
+
 	partitionKeyValue := args[1]
 	partitionKeyName := *tableDescription.KeySchema[0].AttributeName
 
 	expression := ""
 	names := map[string]*string{}
-	values := map[string]*dynamodb.AttributeValue{
-		":partitionKey": {S: &partitionKeyValue},
+	values := map[string]*dynamodb.AttributeValue{}
+
+	setValue := func(values map[string]*dynamodb.AttributeValue, name, key, value string) {
+		typ := attrType(name)
+		switch typ {
+		case dynamodb.ScalarAttributeTypeS:
+			values[key] = &dynamodb.AttributeValue{S: &value}
+		case dynamodb.ScalarAttributeTypeB:
+			values[key] = &dynamodb.AttributeValue{B: []byte(value)}
+		case dynamodb.ScalarAttributeTypeN:
+			values[key] = &dynamodb.AttributeValue{N: &value}
+		}
 	}
+
+	setValue(values, partitionKeyName, ":partitionKey", partitionKeyValue)
 
 	if len(args) == 2 { // table, partition value
 		expression = "#partitionKey = :partitionKey"
-		values = map[string]*dynamodb.AttributeValue{
-			":partitionKey": {S: &partitionKeyValue},
-		}
 		names = map[string]*string{
 			"#partitionKey": &partitionKeyName,
 		}
 	} else if len(args) == 3 { // table, partition value, sort (value|expression)
+		sortKeyName := *tableDescription.KeySchema[1].AttributeName
 		expr := parseSortExpr(args[2])
 		expression = fmt.Sprintf("#partitionKey = :partitionKey and %s", expr.expression)
 		for k, v := range expr.values {
-			v := v
-			values[k] = &dynamodb.AttributeValue{S: &v}
+			setValue(values, sortKeyName, k, v)
 		}
 		names = map[string]*string{
 			"#partitionKey": &partitionKeyName,
-			"#skey":         tableDescription.KeySchema[1].AttributeName,
+			"#skey":         &sortKeyName,
 		}
 	}
 
