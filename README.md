@@ -7,7 +7,7 @@
 ## Installation
 
 * Mac: `brew install glassechidna/taps/dynamo`
-* Windows: `scoop bucket add dynamo https://github.com/glassechidna/scoop-bucket.git; scoop install dynamo`
+* Windows: `scoop bucket add glassechidna https://github.com/glassechidna/scoop-bucket.git; scoop install dynamo`
 * Otherwise get the latest build from the [Releases][releases] tab.
 
 ## Usage
