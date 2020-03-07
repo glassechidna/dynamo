@@ -8,6 +8,8 @@ github.com/aws/aws-sdk-go v1.16.19 h1:eQypou1JciH0C87wYbj9uii0YVG3hS0S4UY78oWmUv
 github.com/aws/aws-sdk-go v1.16.19/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/aws/aws-sdk-go v1.29.18 h1:3T6OdmTwOiEX/didd+RkTdOm6WPzXKFLMVS+ZH9DX1I=
 github.com/aws/aws-sdk-go v1.29.18/go.mod h1:1KvfttTE3SPKMpo8g2c6jL3ZKfXtFvKscTgahTma5Xg=
+github.com/bt/colorjson v0.0.0-20190320170333-2c48ee137333 h1:7KfYdiriIjug6LEmLGVYSDCLvYYMTuzfnRCXv8lhQjw=
+github.com/bt/colorjson v0.0.0-20190320170333-2c48ee137333/go.mod h1:dqwXghmt3HDhudnofha7/R3BViudu3XmGoaMC05qt5I=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

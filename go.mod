@@ -18,3 +18,5 @@ require (
 	golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527 // indirect
 	golang.org/x/text v0.3.0 // indirect
 )
+
+replace github.com/TylerBrock/colorjson => github.com/bt/colorjson v0.0.0-20190320170333-2c48ee137333
