@@ -13,7 +13,7 @@
 ## Usage
 
 ```
-dynamo table-name [partition key value [sort key value-or-expression]]
+dynamo [-n COUNT] [--dax CLUSTER] table-name [partition key value [sort key value-or-expression]]
 ```
 
 * If only a table name is specified, every row will be scanned.
@@ -35,6 +35,9 @@ In place of a constant sort key, you can also type:
 By default, only **10** items will be returned -- this is to avoid accidentally
 downloading an entire table! This can be controlled with the `-n 30` flag.
 Passing `-n 0` disables the limit.
+
+DynamoDB Accelerator (DAX) clusters are also supported. Pass `--dax cluster-name`
+or `--dax cluster-address:port` to take advantage of this.
 
 Finally, output is pretty-printed and colourised when executed directly. If
 executed as part of a script (as determined by `isatty`), output will be

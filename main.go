@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/TylerBrock/colorjson"
+	daxc "github.com/aws/aws-dax-go/dax"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dax"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
@@ -20,6 +22,7 @@ import (
 )
 
 var maxCount int
+var daxCluster string
 
 type Dynamo struct {
 	api     dynamodbiface.DynamoDBAPI
@@ -38,13 +41,9 @@ func main() {
 	*/
 
 	pflag.IntVarP(&maxCount, "number", "n", 10, "maximum number of items to output. 0 for no limit")
+	pflag.StringVar(&daxCluster, "dax", "", "Address of DAX cluster")
 	pflag.Parse()
 	args := pflag.Args()
-
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	api := dynamodb.New(sess)
 
 	var w io.Writer = os.Stdout
 	if isatty.IsTerminal(os.Stdout.Fd()) {
@@ -52,10 +51,56 @@ func main() {
 	}
 
 	d := &Dynamo{
-		api: api,
+		api: apiClient(daxCluster),
 		w:   w,
 	}
 	d.Run(args)
+}
+
+func apiClient(daxCluster string) dynamodbiface.DynamoDBAPI {
+	sess, err := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if len(daxCluster) == 0 {
+		return dynamodb.New(sess)
+	}
+
+	if !strings.Contains(daxCluster, ".") {
+		// must be a cluster name rather than domain name
+		dapi := dax.New(sess)
+		desc, err := dapi.DescribeClusters(&dax.DescribeClustersInput{ClusterNames: []*string{}})
+		if err != nil {
+			panic(err)
+		}
+
+		if len(desc.Clusters) == 0 {
+			panic("no cluster found by that name")
+		}
+
+		e := desc.Clusters[0].ClusterDiscoveryEndpoint
+		daxCluster = fmt.Sprintf("%s:%d", *e.Address, *e.Port)
+	}
+
+	if !strings.Contains(daxCluster, ":") {
+		// missing port, assume default
+		daxCluster += ":8111"
+	}
+
+	cfg := daxc.DefaultConfig()
+	cfg.HostPorts = []string{daxCluster}
+	cfg.Credentials = sess.Config.Credentials
+	cfg.Region = *sess.Config.Region
+
+	api, err := daxc.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	return api
 }
 
 func (d *Dynamo) Run(args []string) {
