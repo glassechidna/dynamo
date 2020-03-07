@@ -1,20 +1,17 @@
-# This is an example goreleaser.yaml file with some sane defaults.
-# Make sure to check the documentation at http://goreleaser.com
-before:
-  hooks: []
 builds:
-- env:
-  - CGO_ENABLED=0
-  goos:
-    - darwin
-    - linux
-    - windows
+  - binary: dynamo
+    goarch: [amd64]
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
 archive:
   replacements:
     darwin: Darwin
     linux: Linux
     windows: Windows
-    386: i386
     amd64: x86_64
 checksum:
   name_template: 'checksums.txt'
@@ -24,24 +21,23 @@ changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
-nfpm:
-  vendor: dynamo
-  homepage: https://github.com/glassechidna/dynamo
-  maintainer: Aidan Steele <aidan.steele@glassechidna.com.au>
-  description: dynamo is a dead-simple CLI for AWS DynamoDB
-  formats:
-    - deb
-brew:
-  github:
-    owner: glassechidna
-    name: homebrew-taps
-  commit_author:
-    name: Aidan Steele
-    email: aidan.steele@glassechidna.com.au
-  homepage: https://github.com/glassechidna/dynamo
-  description: dynamo is a dead-simple CLI for AWS DynamoDB
+      - '^docs:'
+      - '^test:'
+nfpms:
+  - vendor: dynamo
+    homepage: https://github.com/glassechidna/dynamo
+    maintainer: Aidan Steele <aidan.steele@glassechidna.com.au>
+    description: dynamo is a dead-simple CLI for AWS DynamoDB
+    formats: [deb]
+brews:
+  - github:
+      owner: glassechidna
+      name: homebrew-taps
+    commit_author:
+      name: Aidan Steele
+      email: aidan.steele@glassechidna.com.au
+    homepage: https://github.com/glassechidna/dynamo
+    description: dynamo is a dead-simple CLI for AWS DynamoDB
 scoop:
   bucket:
     owner: glassechidna
