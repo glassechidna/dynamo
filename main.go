@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dax"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
@@ -25,9 +24,34 @@ var maxCount int
 var daxCluster string
 
 type Dynamo struct {
-	api     dynamodbiface.DynamoDBAPI
+	api     *Api
 	w       io.Writer
 	emitted int
+}
+
+type Api struct {
+	dynamo *dynamodb.DynamoDB
+	dax    *daxc.Dax
+}
+
+func (a *Api) DescribeTable(input *dynamodb.DescribeTableInput) (*dynamodb.DescribeTableOutput, error) {
+	return a.dynamo.DescribeTable(input)
+}
+
+func (a *Api) QueryPages(input *dynamodb.QueryInput, cb func(*dynamodb.QueryOutput, bool) bool) error {
+	if a.dax != nil {
+		return a.dax.QueryPages(input, cb)
+	}
+
+	return a.dynamo.QueryPages(input, cb)
+}
+
+func (a *Api) ScanPages(input *dynamodb.ScanInput, cb func(*dynamodb.ScanOutput, bool) bool) error {
+	if a.dax != nil {
+		return a.dax.ScanPages(input, cb)
+	}
+
+	return a.dynamo.ScanPages(input, cb)
 }
 
 func main() {
@@ -57,7 +81,7 @@ func main() {
 	d.Run(args)
 }
 
-func apiClient(daxCluster string) dynamodbiface.DynamoDBAPI {
+func apiClient(daxCluster string) *Api {
 	sess, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
@@ -65,8 +89,10 @@ func apiClient(daxCluster string) dynamodbiface.DynamoDBAPI {
 		panic(err)
 	}
 
+	api := &Api{dynamo: dynamodb.New(sess)}
+
 	if len(daxCluster) == 0 {
-		return dynamodb.New(sess)
+		return api
 	}
 
 	if !strings.Contains(daxCluster, ".") {
@@ -95,7 +121,7 @@ func apiClient(daxCluster string) dynamodbiface.DynamoDBAPI {
 	cfg.Credentials = sess.Config.Credentials
 	cfg.Region = *sess.Config.Region
 
-	api, err := daxc.New(cfg)
+	api.dax, err = daxc.New(cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -163,7 +189,7 @@ func (d *Dynamo) write(jsonItems []interface{}) bool {
 	return true
 }
 
-func queryForArgs(api dynamodbiface.DynamoDBAPI, args []string) (*dynamodb.QueryInput, error) {
+func queryForArgs(api *Api, args []string) (*dynamodb.QueryInput, error) {
 	table := args[0]
 	tableDescription, _ := tableDescription(api, table)
 
@@ -225,7 +251,7 @@ func queryForArgs(api dynamodbiface.DynamoDBAPI, args []string) (*dynamodb.Query
 	return input, nil
 }
 
-func tableDescription(api dynamodbiface.DynamoDBAPI, table string) (*dynamodb.TableDescription, error) {
+func tableDescription(api *Api, table string) (*dynamodb.TableDescription, error) {
 	describeResp, _ := api.DescribeTable(&dynamodb.DescribeTableInput{TableName: &table})
 	tableDescription := describeResp.Table
 	return tableDescription, nil
