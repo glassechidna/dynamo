@@ -13,6 +13,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
+	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"io"
 	"os"
@@ -142,9 +143,13 @@ func (d *Dynamo) Run(args []string) {
 			spew.Dump(err)
 		}
 	} else {
-		input, _ := queryForArgs(d.api, args)
+		input, err := queryForArgs(d.api, args)
+		if err != nil {
+			spew.Dump(err)
+			os.Exit(1)
+		}
 
-		err := d.api.QueryPages(input, func(page *dynamodb.QueryOutput, lastPage bool) bool {
+		err = d.api.QueryPages(input, func(page *dynamodb.QueryOutput, lastPage bool) bool {
 			return d.write(convert(page.Items)) || lastPage
 		})
 		if err != nil {
@@ -191,7 +196,10 @@ func (d *Dynamo) write(jsonItems []interface{}) bool {
 
 func queryForArgs(api *Api, args []string) (*dynamodb.QueryInput, error) {
 	table := args[0]
-	tableDescription, _ := tableDescription(api, table)
+	tableDescription, err := tableDescription(api, table)
+	if err != nil {
+		return nil, err
+	}
 
 	attrType := func(name string) string {
 		for _, def := range tableDescription.AttributeDefinitions {
@@ -252,7 +260,11 @@ func queryForArgs(api *Api, args []string) (*dynamodb.QueryInput, error) {
 }
 
 func tableDescription(api *Api, table string) (*dynamodb.TableDescription, error) {
-	describeResp, _ := api.DescribeTable(&dynamodb.DescribeTableInput{TableName: &table})
+	describeResp, err := api.DescribeTable(&dynamodb.DescribeTableInput{TableName: &table})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	tableDescription := describeResp.Table
 	return tableDescription, nil
 }
