@@ -13,9 +13,10 @@
 ## Usage
 
 ```
-dynamo [-n COUNT] [--dax CLUSTER] table-name [partition key value [sort key value-or-expression]]
+dynamo [-n COUNT] [--dax CLUSTER] [table-name [partition key value [sort key value-or-expression]]]
 ```
 
+* If no table name is specified, all tables are listed.
 * If only a table name is specified, every row will be scanned.
 * If a table name and partition key are provided, either:
   * That item will be returned (for single-key schemas)
