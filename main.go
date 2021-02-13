@@ -19,6 +19,7 @@ import (
 
 var maxCount int
 var daxCluster string
+var profile string
 
 type Dynamo struct {
 	api     *Api
@@ -38,6 +39,7 @@ func main() {
 
 	pflag.IntVarP(&maxCount, "number", "n", 10, "maximum number of items to output. 0 for no limit")
 	pflag.StringVar(&daxCluster, "dax", "", "Address of DAX cluster")
+	pflag.StringVar(&profile, "profile", "", "~/.aws/config profile to use")
 	pflag.Parse()
 	args := pflag.Args()
 
@@ -47,7 +49,7 @@ func main() {
 	}
 
 	d := &Dynamo{
-		api: apiClient(daxCluster),
+		api: apiClient(daxCluster, profile),
 		w:   w,
 	}
 	d.Run(args)

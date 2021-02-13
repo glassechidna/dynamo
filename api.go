@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	daxc "github.com/aws/aws-dax-go/dax"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dax"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -38,8 +39,12 @@ func (a *Api) ScanPages(input *dynamodb.ScanInput, cb func(*dynamodb.ScanOutput,
 	return a.dynamo.ScanPages(input, cb)
 }
 
-func apiClient(daxCluster string) *Api {
-	sess, err := session.NewSession()
+func apiClient(daxCluster string, profile string) *Api {
+	sess, err := session.NewSessionWithOptions(session.Options{
+		Profile:                 profile,
+		SharedConfigState:       session.SharedConfigEnable,
+		AssumeRoleTokenProvider: stscreds.StdinTokenProvider,
+	})
 	if err != nil {
 		panic(err)
 	}
